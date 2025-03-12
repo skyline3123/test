@@ -1,12 +1,98 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-	<meta charset="UTF-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Portfolio</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울 기온 예보</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js 추가 -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #weatherData {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        canvas {
+            max-width: 600px;
+            margin: auto;
+        }
+    </style>
 </head>
 <body>
-  <p>Hello, World!</p>
+    <h1>📡 서울 기온 예보</h1>
+    <button onclick="fetchWeatherData()">기온 예보 불러오기</button>
+    <div id="weatherData">🔄 기온 정보를 불러옵니다...</div>
+    <canvas id="tempChart"></canvas>
+
+    <script>
+        const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
+        const API_KEY = "4WbcPl8cpZjq8VXOePfsXjYGid7SRm5olpV5s6WVU2qwe6cuzQCFIwqjhf45FV1x0fEtTkZnwFEoLZSG%2B69j6g%3D%3D"; // 🔹 본인의 API 키로 변경
+        const today = new Date();
+        const formattedDate = today.toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD 형식
+
+        async function fetchWeatherData() {
+            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=100&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const items = data.response.body.items.item;
+                const temps = items.filter(item => item.category === "TMP").slice(0, 12); // 12시간 예보
+                const times = temps.map(item => item.fcstTime);
+                const values = temps.map(item => item.fcstValue);
+
+                document.getElementById("weatherData").innerText = `🌡 서울 기온 예보 (최대 12시간)`;
+
+                updateChart(times, values);
+            } catch (error) {
+                document.getElementById("weatherData").innerText = "❌ 데이터를 불러오는 중 오류 발생!";
+                console.error("API Fetch Error:", error);
+            }
+        }
+
+        function updateChart(times, values) {
+            const ctx = document.getElementById("tempChart").getContext("2d");
+
+            if (window.tempChart) {
+                window.tempChart.destroy();
+            }
+
+            window.tempChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: times.map(time => `${time.slice(0,2)}:00`),
+                    datasets: [{
+                        label: "기온 (℃)",
+                        data: values,
+                        borderColor: "red",
+                        backgroundColor: "rgba(255, 0, 0, 0.1)",
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: { display: true, text: "기온 (℃)" }
+                        },
+                        x: {
+                            title: { display: true, text: "시간" }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 </html>
