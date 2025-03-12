@@ -60,10 +60,10 @@
             }
         }
 
-      function updateChart(times, values) {
+ function updateChart(times, values) {
     const ctx = document.getElementById("tempChart").getContext("2d");
 
-    // ✅ Chart 인스턴스가 생성된 경우만 삭제
+    // ✅ Chart 인스턴스인지 확인한 후 삭제
     if (window.tempChart instanceof Chart) {
         window.tempChart.destroy();
     }
