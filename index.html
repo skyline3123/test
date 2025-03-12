@@ -60,39 +60,42 @@
             }
         }
 
-        function updateChart(times, values) {
-            const ctx = document.getElementById("tempChart").getContext("2d");
+      function updateChart(times, values) {
+    const ctx = document.getElementById("tempChart").getContext("2d");
 
-            if (window.tempChart) {
-                window.tempChart.destroy();
-            }
+    // ✅ Chart 인스턴스가 생성된 경우만 삭제
+    if (window.tempChart instanceof Chart) {
+        window.tempChart.destroy();
+    }
 
-            window.tempChart = new Chart(ctx, {
-                type: "line",
-                data: {
-                    labels: times.map(time => `${time.slice(0,2)}:00`),
-                    datasets: [{
-                        label: "기온 (℃)",
-                        data: values,
-                        borderColor: "red",
-                        backgroundColor: "rgba(255, 0, 0, 0.1)",
-                        borderWidth: 2
-                    }]
+    // ✅ 새로운 Chart 객체 생성
+    window.tempChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: times.map(time => `${time.slice(0,2)}:00`),
+            datasets: [{
+                label: "기온 (℃)",
+                data: values,
+                borderColor: "red",
+                backgroundColor: "rgba(255, 0, 0, 0.1)",
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: { display: true, text: "기온 (℃)" }
                 },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            title: { display: true, text: "기온 (℃)" }
-                        },
-                        x: {
-                            title: { display: true, text: "시간" }
-                        }
-                    }
+                x: {
+                    title: { display: true, text: "시간" }
                 }
-            });
+            }
         }
+    });
+}
+
     </script>
 </body>
 </html>
