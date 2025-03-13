@@ -32,7 +32,7 @@
             flex-wrap: wrap;
         }
         canvas {
-            max-width: 400px;
+            max-width: 300px; /* 도넛 크기 동일 유지 */
             margin: 20px;
         }
     </style>
@@ -45,7 +45,7 @@
     
     <div class="chart-container">
         <canvas id="tempChart"></canvas> <!-- 기온 도넛 차트 -->
-        <canvas id="feelsLikeChart"></canvas> <!-- 체감온도 선 그래프 -->
+        <canvas id="feelsLikeChart"></canvas> <!-- 체감온도 도넛 차트 -->
     </div>
 
     <script>
@@ -65,12 +65,16 @@
                 const data = await response.json();
                 
                 const items = data.response.body.items.item;
-                const temps = items.filter(item => item.category === "TMP").slice(0, 6); // 🔹 6시간 예보
-                const humidities = items.filter(item => item.category === "REH").slice(0, 6); // 🔹 상대습도 데이터
+                const temps = items.filter(item => item.category === "TMP"); // 🔹 기온 데이터
+                const humidities = items.filter(item => item.category === "REH"); // 🔹 상대습도 데이터
                 
-                const times = temps.map(item => item.fcstTime);
-                const values = temps.map(item => item.fcstValue);
-                const humidValues = humidities.map(item => item.fcstValue);
+                // 🔹 08시부터 20시까지 필터링
+                const filteredTemps = temps.filter(item => parseInt(item.fcstTime) >= 800 && parseInt(item.fcstTime) <= 2000);
+                const filteredHumidities = humidities.filter(item => parseInt(item.fcstTime) >= 800 && parseInt(item.fcstTime) <= 2000);
+
+                const times = filteredTemps.map(item => item.fcstTime);
+                const values = filteredTemps.map(item => item.fcstValue);
+                const humidValues = filteredHumidities.map(item => item.fcstValue);
 
                 // ✅ 체감온도 계산
                 const feelsLikeValues = values.map((Ta, i) => {
@@ -79,7 +83,7 @@
                     return calculateFeelsLikeTemperature(Ta, Tw);
                 });
 
-                document.getElementById("weatherData").innerText = `🌡 서울 기온 및 체감온도 예보 (6시간)`;
+                document.getElementById("weatherData").innerText = `🌡 서울 기온 및 체감온도 예보 (08시~20시)`;
 
                 updateCharts(times, values, feelsLikeValues);
             } catch (error) {
@@ -90,12 +94,11 @@
 
         // ✅ 습구온도 계산
         function calculateWetBulbTemperature(Ta, RH) {
-            const Tw = Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5)) 
-                     + Math.atan(Ta + RH) 
-                     - Math.atan(RH - 1.67633) 
-                     + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH) 
-                     - 4.686035;
-            return Tw;
+            return Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5)) 
+                 + Math.atan(Ta + RH) 
+                 - Math.atan(RH - 1.67633) 
+                 + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH) 
+                 - 4.686035;
         }
 
         // ✅ 체감온도 계산
@@ -116,11 +119,11 @@
                 window.feelsLikeChart.destroy();
             }
 
-            // ✅ 도넛 차트 (기온)
+            // ✅ 기온 도넛 차트
             window.tempChart = new Chart(tempCtx, {
                 type: "doughnut",
                 data: {
-                    labels: times.map(time => `${time.slice(0,2)}:00`),
+                    labels: times.map((time, i) => `${time.slice(0,2)}시 (${values[i]}℃)`),
                     datasets: [{
                         label: "기온 (℃)",
                         data: values,
@@ -138,40 +141,36 @@
                 options: {
                     responsive: true,
                     plugins: {
-                        legend: {
-                            position: "bottom"
-                        },
-                        title: {
-                            display: true,
-                            text: "서울 기온 예보 (도넛 차트)"
-                        }
+                        legend: { position: "bottom" },
+                        title: { display: true, text: "서울 기온 예보 (도넛 차트)" }
                     }
                 }
             });
 
-            // ✅ 선 그래프 (체감온도)
+            // ✅ 체감온도 도넛 차트
             window.feelsLikeChart = new Chart(feelsLikeCtx, {
-                type: "line",
+                type: "doughnut",
                 data: {
-                    labels: times.map(time => `${time.slice(0,2)}:00`),
+                    labels: times.map((time, i) => `${time.slice(0,2)}시 (${feelsLikeValues[i].toFixed(1)}℃)`),
                     datasets: [{
                         label: "체감온도 (℃)",
                         data: feelsLikeValues,
-                        borderColor: "red",
-                        backgroundColor: "rgba(255, 0, 0, 0.1)",
-                        borderWidth: 2
+                        backgroundColor: [
+                            "rgba(255, 99, 132, 0.6)",
+                            "rgba(54, 162, 235, 0.6)",
+                            "rgba(255, 206, 86, 0.6)",
+                            "rgba(75, 192, 192, 0.6)",
+                            "rgba(153, 102, 255, 0.6)",
+                            "rgba(255, 159, 64, 0.6)"
+                        ],
+                        borderWidth: 1
                     }]
                 },
                 options: {
                     responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            title: { display: true, text: "체감온도 (℃)" }
-                        },
-                        x: {
-                            title: { display: true, text: "시간" }
-                        }
+                    plugins: {
+                        legend: { position: "bottom" },
+                        title: { display: true, text: "서울 체감온도 예보 (도넛 차트)" }
                     }
                 }
             });
