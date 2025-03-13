@@ -135,22 +135,24 @@
                 cutout: "60%",
                 animation: {
                     onComplete: function () {
-                        const chartInstance = this.chart;
-                        if (!chartInstance) return;
-                        const ctx = chartInstance.ctx;
-                        ctx.textAlign = "center";
-                        ctx.textBaseline = "middle";
-                        ctx.font = "14px Arial";
+                        setTimeout(() => {
+                            const chartInstance = this.chart;
+                            if (!chartInstance) return;
+                            const ctx = chartInstance.ctx;
+                            ctx.textAlign = "center";
+                            ctx.textBaseline = "middle";
+                            ctx.font = "14px Arial";
 
-                        chartInstance.data.labels.forEach((label, i) => {
-                            const meta = chartInstance.getDatasetMeta(0);
-                            const arc = meta.data[i];
-                            if (arc) {
-                                const center = arc.getCenterPoint();
-                                ctx.fillStyle = "black";
-                                ctx.fillText(label, center.x, center.y);
-                            }
-                        });
+                            chartInstance.data.labels.forEach((label, i) => {
+                                const meta = chartInstance.getDatasetMeta(0);
+                                const arc = meta.data[i];
+                                if (arc) {
+                                    const center = arc.tooltipPosition();
+                                    ctx.fillStyle = "black";
+                                    ctx.fillText(label, center.x, center.y);
+                                }
+                            });
+                        }, 300);
                     }
                 }
             };
@@ -187,3 +189,4 @@
     </script>
 </body>
 </html>
+
