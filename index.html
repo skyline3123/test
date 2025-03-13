@@ -57,7 +57,7 @@
         document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
 
         async function fetchWeatherData() {
-            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=200&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
+            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
             
             try {
                 const response = await fetch(url);
