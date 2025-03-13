@@ -44,8 +44,8 @@
     <div id="weatherData">🔄 기온 정보를 불러옵니다...</div>
     
     <div class="chart-container">
-        <canvas id="tempChart"></canvas> <!-- 기온 도넛 차트 -->
-        <canvas id="feelsLikeChart"></canvas> <!-- 체감온도 도넛 차트 -->
+        <canvas id="tempChart"></canvas> <!-- 기온 차트 -->
+        <canvas id="feelsLikeChart"></canvas> <!-- 체감온도 차트 -->
     </div>
 
     <script>
@@ -57,31 +57,40 @@
         document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
 
         async function fetchWeatherData() {
-            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=100&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
+            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=200&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
             
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 
                 const items = data.response.body.items.item;
-                const temps = items.filter(item => item.category === "TMP");
-                const humidities = items.filter(item => item.category === "REH");
-                
-                // 🔹 08시부터 20시까지 필터링
-                const filteredTemps = temps.filter(item => {
+
+                // 🔹 08시~20시 데이터를 시간별로 정렬하여 정확히 가져오기
+                let tempMap = new Map();
+                let humidityMap = new Map();
+
+                items.forEach(item => {
                     const time = parseInt(item.fcstTime);
-                    return time >= 800 && time <= 2000;
+                    if (time >= 800 && time <= 2000) {
+                        if (item.category === "TMP") tempMap.set(time, item.fcstValue);
+                        if (item.category === "REH") humidityMap.set(time, item.fcstValue);
+                    }
                 });
 
-                const filteredHumidities = humidities.filter(item => {
-                    const time = parseInt(item.fcstTime);
-                    return time >= 800 && time <= 2000;
-                });
+                // 🔹 08시~20시까지 정확히 13개 데이터 가져오기
+                const times = [];
+                const values = [];
+                const humidValues = [];
 
-                const times = filteredTemps.map(item => item.fcstTime);
-                const values = filteredTemps.map(item => item.fcstValue);
-                const humidValues = filteredHumidities.map(item => item.fcstValue);
+                for (let t = 800; t <= 2000; t += 100) {
+                    if (tempMap.has(t) && humidityMap.has(t)) {
+                        times.push(t.toString().padStart(4, "0")); // "0800" 형식 유지
+                        values.push(tempMap.get(t));
+                        humidValues.push(humidityMap.get(t));
+                    }
+                }
 
+                // ✅ 체감온도 계산
                 const feelsLikeValues = values.map((Ta, i) => {
                     const RH = humidValues[i];
                     const Tw = calculateWetBulbTemperature(Ta, RH);
@@ -124,7 +133,7 @@
                     legend: { display: false },
                     tooltip: { enabled: false },
                 },
-                cutout: "60%", // ✅ 도넛 크기 동일 유지
+                cutout: "60%", 
                 animation: {
                     onComplete: function () {
                         const chartInstance = this.chart;
@@ -154,18 +163,7 @@
                 type: "doughnut",
                 data: {
                     labels: times.map((time, i) => `${time.slice(0,2)}시\n${values[i]}℃`),
-                    datasets: [{
-                        data: new Array(values.length).fill(1), // ✅ 크기 동일 유지
-                        backgroundColor: [
-                            "rgba(255, 99, 132, 0.6)",
-                            "rgba(54, 162, 235, 0.6)",
-                            "rgba(255, 206, 86, 0.6)",
-                            "rgba(75, 192, 192, 0.6)",
-                            "rgba(153, 102, 255, 0.6)",
-                            "rgba(255, 159, 64, 0.6)"
-                        ],
-                        borderWidth: 1
-                    }]
+                    datasets: [{ data: new Array(values.length).fill(1), backgroundColor: ["red", "blue", "green", "yellow", "purple", "orange", "cyan", "magenta", "brown", "pink", "gray", "lime", "teal"], borderWidth: 1 }]
                 },
                 options: commonOptions
             });
@@ -174,18 +172,7 @@
                 type: "doughnut",
                 data: {
                     labels: times.map((time, i) => `${time.slice(0,2)}시\n${feelsLikeValues[i].toFixed(1)}℃`),
-                    datasets: [{
-                        data: new Array(feelsLikeValues.length).fill(1),
-                        backgroundColor: [
-                            "rgba(255, 99, 132, 0.6)",
-                            "rgba(54, 162, 235, 0.6)",
-                            "rgba(255, 206, 86, 0.6)",
-                            "rgba(75, 192, 192, 0.6)",
-                            "rgba(153, 102, 255, 0.6)",
-                            "rgba(255, 159, 64, 0.6)"
-                        ],
-                        borderWidth: 1
-                    }]
+                    datasets: [{ data: new Array(feelsLikeValues.length).fill(1), backgroundColor: ["red", "blue", "green", "yellow", "purple", "orange", "cyan", "magenta", "brown", "pink", "gray", "lime", "teal"], borderWidth: 1 }]
                 },
                 options: commonOptions
             });
