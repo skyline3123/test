@@ -57,7 +57,7 @@
         document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
 
         async function fetchWeatherData() {
-            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=200&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
+            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
             
             try {
                 const response = await fetch(url);
@@ -128,18 +128,18 @@
 
             const textPlugin = {
                 id: "textPlugin",
-                beforeDraw: (chart) => {
+                afterDraw: (chart) => {
                     const ctx = chart.ctx;
                     ctx.save();
                     const dataset = chart.data.datasets[0];
-                    chart.data.labels.forEach((label, i) => {
-                        const meta = chart.getDatasetMeta(0);
-                        const arc = meta.data[i];
+                    const meta = chart.getDatasetMeta(0);
+
+                    meta.data.forEach((arc, i) => {
                         const center = arc.tooltipPosition();
                         ctx.fillStyle = "black";
                         ctx.font = "bold 14px Arial";
                         ctx.textAlign = "center";
-                        ctx.fillText(label, center.x, center.y);
+                        ctx.fillText(chart.data.labels[i], center.x, center.y - 10); // 도넛 조각 위에 표시
                     });
                     ctx.restore();
                 }
