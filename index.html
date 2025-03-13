@@ -44,8 +44,8 @@
     <div id="weatherData">🔄 기온 정보를 불러옵니다...</div>
     
     <div class="chart-container">
-        <canvas id="tempChart"></canvas> <!-- 기온 차트 -->
-        <canvas id="feelsLikeChart"></canvas> <!-- 체감온도 차트 -->
+        <canvas id="tempChart"></canvas> <!-- 기온 도넛 차트 -->
+        <canvas id="feelsLikeChart"></canvas> <!-- 체감온도 도넛 차트 -->
     </div>
 
     <script>
@@ -57,7 +57,7 @@
         document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
 
         async function fetchWeatherData() {
-            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
+            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=200&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
             
             try {
                 const response = await fetch(url);
@@ -65,7 +65,6 @@
                 
                 const items = data.response.body.items.item;
 
-                // 🔹 08시~20시 데이터를 시간별로 정렬하여 정확히 가져오기
                 let tempMap = new Map();
                 let humidityMap = new Map();
 
@@ -77,20 +76,18 @@
                     }
                 });
 
-                // 🔹 08시~20시까지 정확히 13개 데이터 가져오기
                 const times = [];
                 const values = [];
                 const humidValues = [];
 
                 for (let t = 800; t <= 2000; t += 100) {
                     if (tempMap.has(t) && humidityMap.has(t)) {
-                        times.push(t.toString().padStart(4, "0")); // "0800" 형식 유지
+                        times.push(t.toString().padStart(4, "0"));
                         values.push(tempMap.get(t));
                         humidValues.push(humidityMap.get(t));
                     }
                 }
 
-                // ✅ 체감온도 계산
                 const feelsLikeValues = values.map((Ta, i) => {
                     const RH = humidValues[i];
                     const Tw = calculateWetBulbTemperature(Ta, RH);
@@ -127,13 +124,15 @@
                 window.feelsLikeChart.destroy();
             }
 
+            const getColor = (temp) => temp < 10 ? "skyblue" : "yellow";
+
             const commonOptions = {
                 responsive: true,
                 plugins: {
                     legend: { display: false },
                     tooltip: { enabled: false },
                 },
-                cutout: "60%", 
+                cutout: "60%",
                 animation: {
                     onComplete: function () {
                         const chartInstance = this.chart;
@@ -163,7 +162,11 @@
                 type: "doughnut",
                 data: {
                     labels: times.map((time, i) => `${time.slice(0,2)}시\n${values[i]}℃`),
-                    datasets: [{ data: new Array(values.length).fill(1), backgroundColor: ["red", "blue", "green", "yellow", "purple", "orange", "cyan", "magenta", "brown", "pink", "gray", "lime", "teal"], borderWidth: 1 }]
+                    datasets: [{
+                        data: new Array(values.length).fill(1),
+                        backgroundColor: values.map(getColor),
+                        borderWidth: 1
+                    }]
                 },
                 options: commonOptions
             });
@@ -172,7 +175,11 @@
                 type: "doughnut",
                 data: {
                     labels: times.map((time, i) => `${time.slice(0,2)}시\n${feelsLikeValues[i].toFixed(1)}℃`),
-                    datasets: [{ data: new Array(feelsLikeValues.length).fill(1), backgroundColor: ["red", "blue", "green", "yellow", "purple", "orange", "cyan", "magenta", "brown", "pink", "gray", "lime", "teal"], borderWidth: 1 }]
+                    datasets: [{
+                        data: new Array(feelsLikeValues.length).fill(1),
+                        backgroundColor: feelsLikeValues.map(getColor),
+                        borderWidth: 1
+                    }]
                 },
                 options: commonOptions
             });
