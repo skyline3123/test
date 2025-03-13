@@ -67,8 +67,16 @@
                 const temps = items.filter(item => item.category === "TMP");
                 const humidities = items.filter(item => item.category === "REH");
                 
-                const filteredTemps = temps.filter(item => parseInt(item.fcstTime) >= 800 && parseInt(item.fcstTime) <= 2000);
-                const filteredHumidities = humidities.filter(item => parseInt(item.fcstTime) >= 800 && parseInt(item.fcstTime) <= 2000);
+                // 🔹 08시부터 20시까지 필터링
+                const filteredTemps = temps.filter(item => {
+                    const time = parseInt(item.fcstTime);
+                    return time >= 800 && time <= 2000;
+                });
+
+                const filteredHumidities = humidities.filter(item => {
+                    const time = parseInt(item.fcstTime);
+                    return time >= 800 && time <= 2000;
+                });
 
                 const times = filteredTemps.map(item => item.fcstTime);
                 const values = filteredTemps.map(item => item.fcstValue);
@@ -116,16 +124,18 @@
                     legend: { display: false },
                     tooltip: { enabled: false },
                 },
-                cutout: "60%",
+                cutout: "60%", // ✅ 도넛 크기 동일 유지
                 animation: {
-                    onComplete: function (chart) {
-                        const ctx = chart.chart.ctx;
+                    onComplete: function () {
+                        const chartInstance = this.chart;
+                        if (!chartInstance) return;
+                        const ctx = chartInstance.ctx;
                         ctx.textAlign = "center";
                         ctx.textBaseline = "middle";
                         ctx.font = "14px Arial";
 
-                        chart.chart.data.labels.forEach((label, i) => {
-                            const meta = chart.chart.getDatasetMeta(0);
+                        chartInstance.data.labels.forEach((label, i) => {
+                            const meta = chartInstance.getDatasetMeta(0);
                             const arc = meta.data[i];
                             if (arc) {
                                 const center = arc.getCenterPoint();
@@ -145,7 +155,7 @@
                 data: {
                     labels: times.map((time, i) => `${time.slice(0,2)}시\n${values[i]}℃`),
                     datasets: [{
-                        data: new Array(values.length).fill(1),
+                        data: new Array(values.length).fill(1), // ✅ 크기 동일 유지
                         backgroundColor: [
                             "rgba(255, 99, 132, 0.6)",
                             "rgba(54, 162, 235, 0.6)",
