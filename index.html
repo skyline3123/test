@@ -21,23 +21,32 @@
             font-size: 18px;
             font-weight: bold;
         }
+        #dateDisplay {
+            margin-top: 10px;
+            font-size: 16px;
+            color: gray;
+        }
         canvas {
-            max-width: 600px;
+            max-width: 400px;
             margin: auto;
         }
     </style>
 </head>
 <body>
     <h1>📡 서울 기온 예보</h1>
+    <div id="dateDisplay">📅 날짜: 불러오는 중...</div>
     <button onclick="fetchWeatherData()">기온 예보 불러오기</button>
     <div id="weatherData">🔄 기온 정보를 불러옵니다...</div>
     <canvas id="tempChart"></canvas>
 
     <script>
         const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
-        const API_KEY = "4WbcPl8cpZjq8VXOePfsXjYGid7SRm5olpV5s6WVU2qwe6cuzQCFIwqjhf45FV1x0fEtTkZnwFEoLZSG%2B69j6g%3D%3D"; // 🔹 본인의 API 키로 변경
+        const API_KEY = "YOUR_API_KEY"; // 🔹 본인의 API 키로 변경
         const today = new Date();
         const formattedDate = today.toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD 형식
+
+        // ✅ 날짜 표시
+        document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
 
         async function fetchWeatherData() {
             const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=100&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
@@ -47,11 +56,11 @@
                 const data = await response.json();
                 
                 const items = data.response.body.items.item;
-                const temps = items.filter(item => item.category === "TMP").slice(0, 12); // 12시간 예보
+                const temps = items.filter(item => item.category === "TMP").slice(0, 6); // 🔹 상위 6개 값만 사용
                 const times = temps.map(item => item.fcstTime);
                 const values = temps.map(item => item.fcstValue);
 
-                document.getElementById("weatherData").innerText = `🌡 서울 기온 예보 (최대 12시간)`;
+                document.getElementById("weatherData").innerText = `🌡 서울 기온 예보 (최대 6시간)`;
 
                 updateChart(times, values);
             } catch (error) {
@@ -60,42 +69,48 @@
             }
         }
 
- function updateChart(times, values) {
-    const ctx = document.getElementById("tempChart").getContext("2d");
+        function updateChart(times, values) {
+            const ctx = document.getElementById("tempChart").getContext("2d");
 
-    // ✅ Chart 인스턴스인지 확인한 후 삭제
-    if (window.tempChart instanceof Chart) {
-        window.tempChart.destroy();
-    }
-
-    // ✅ 새로운 Chart 객체 생성
-    window.tempChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: times.map(time => `${time.slice(0,2)}:00`),
-            datasets: [{
-                label: "기온 (℃)",
-                data: values,
-                borderColor: "red",
-                backgroundColor: "rgba(255, 0, 0, 0.1)",
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    title: { display: true, text: "기온 (℃)" }
-                },
-                x: {
-                    title: { display: true, text: "시간" }
-                }
+            // ✅ Chart 인스턴스인지 확인한 후 삭제
+            if (window.tempChart instanceof Chart) {
+                window.tempChart.destroy();
             }
-        }
-    });
-}
 
+            // ✅ 도넛 차트로 변경
+            window.tempChart = new Chart(ctx, {
+                type: "doughnut", // 🔹 도넛 차트
+                data: {
+                    labels: times.map(time => `${time.slice(0,2)}:00`), // 시간 라벨
+                    datasets: [{
+                        label: "기온 (℃)",
+                        data: values,
+                        backgroundColor: [
+                            "rgba(255, 99, 132, 0.6)",
+                            "rgba(54, 162, 235, 0.6)",
+                            "rgba(255, 206, 86, 0.6)",
+                            "rgba(75, 192, 192, 0.6)",
+                            "rgba(153, 102, 255, 0.6)",
+                            "rgba(255, 159, 64, 0.6)"
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: "bottom"
+                        },
+                        title: {
+                            display: true,
+                            text: "서울 기온 예보 (도넛 차트)"
+                        }
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>
+
