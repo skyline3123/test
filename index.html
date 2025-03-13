@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>서울 기온 예보</title>
+    <title>서울 기온 및 체감온도 예보</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js 추가 -->
     <style>
         body {
@@ -26,18 +26,27 @@
             font-size: 16px;
             color: gray;
         }
+        .chart-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
         canvas {
             max-width: 400px;
-            margin: auto;
+            margin: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>📡 서울 기온 예보</h1>
+    <h1>📡 서울 기온 및 체감온도 예보</h1>
     <div id="dateDisplay">📅 날짜: 불러오는 중...</div>
     <button onclick="fetchWeatherData()">기온 예보 불러오기</button>
     <div id="weatherData">🔄 기온 정보를 불러옵니다...</div>
-    <canvas id="tempChart"></canvas>
+    
+    <div class="chart-container">
+        <canvas id="tempChart"></canvas> <!-- 기온 도넛 차트 -->
+        <canvas id="feelsLikeChart"></canvas> <!-- 체감온도 선 그래프 -->
+    </div>
 
     <script>
         const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
@@ -56,32 +65,62 @@
                 const data = await response.json();
                 
                 const items = data.response.body.items.item;
-                const temps = items.filter(item => item.category === "TMP").slice(0, 6); // 🔹 상위 6개 값만 사용
+                const temps = items.filter(item => item.category === "TMP").slice(0, 6); // 🔹 6시간 예보
+                const humidities = items.filter(item => item.category === "REH").slice(0, 6); // 🔹 상대습도 데이터
+                
                 const times = temps.map(item => item.fcstTime);
                 const values = temps.map(item => item.fcstValue);
+                const humidValues = humidities.map(item => item.fcstValue);
 
-                document.getElementById("weatherData").innerText = `🌡 서울 기온 예보 (최대 6시간)`;
+                // ✅ 체감온도 계산
+                const feelsLikeValues = values.map((Ta, i) => {
+                    const RH = humidValues[i]; // 상대습도
+                    const Tw = calculateWetBulbTemperature(Ta, RH);
+                    return calculateFeelsLikeTemperature(Ta, Tw);
+                });
 
-                updateChart(times, values);
+                document.getElementById("weatherData").innerText = `🌡 서울 기온 및 체감온도 예보 (6시간)`;
+
+                updateCharts(times, values, feelsLikeValues);
             } catch (error) {
                 document.getElementById("weatherData").innerText = "❌ 데이터를 불러오는 중 오류 발생!";
                 console.error("API Fetch Error:", error);
             }
         }
 
-        function updateChart(times, values) {
-            const ctx = document.getElementById("tempChart").getContext("2d");
+        // ✅ 습구온도 계산
+        function calculateWetBulbTemperature(Ta, RH) {
+            const Tw = Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5)) 
+                     + Math.atan(Ta + RH) 
+                     - Math.atan(RH - 1.67633) 
+                     + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH) 
+                     - 4.686035;
+            return Tw;
+        }
 
-            // ✅ Chart 인스턴스인지 확인한 후 삭제
+        // ✅ 체감온도 계산
+        function calculateFeelsLikeTemperature(Ta, Tw) {
+            return -0.2442 + 0.55399 * Tw + 0.45535 * Ta 
+                   - 0.0022 * Tw * Tw + 0.00278 * Tw * Ta + 3.0;
+        }
+
+        function updateCharts(times, values, feelsLikeValues) {
+            const tempCtx = document.getElementById("tempChart").getContext("2d");
+            const feelsLikeCtx = document.getElementById("feelsLikeChart").getContext("2d");
+
+            // ✅ 기존 차트 삭제
             if (window.tempChart instanceof Chart) {
                 window.tempChart.destroy();
             }
+            if (window.feelsLikeChart instanceof Chart) {
+                window.feelsLikeChart.destroy();
+            }
 
-            // ✅ 도넛 차트로 변경
-            window.tempChart = new Chart(ctx, {
-                type: "doughnut", // 🔹 도넛 차트
+            // ✅ 도넛 차트 (기온)
+            window.tempChart = new Chart(tempCtx, {
+                type: "doughnut",
                 data: {
-                    labels: times.map(time => `${time.slice(0,2)}:00`), // 시간 라벨
+                    labels: times.map(time => `${time.slice(0,2)}:00`),
                     datasets: [{
                         label: "기온 (℃)",
                         data: values,
@@ -109,8 +148,34 @@
                     }
                 }
             });
+
+            // ✅ 선 그래프 (체감온도)
+            window.feelsLikeChart = new Chart(feelsLikeCtx, {
+                type: "line",
+                data: {
+                    labels: times.map(time => `${time.slice(0,2)}:00`),
+                    datasets: [{
+                        label: "체감온도 (℃)",
+                        data: feelsLikeValues,
+                        borderColor: "red",
+                        backgroundColor: "rgba(255, 0, 0, 0.1)",
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: { display: true, text: "체감온도 (℃)" }
+                        },
+                        x: {
+                            title: { display: true, text: "시간" }
+                        }
+                    }
+                }
+            });
         }
     </script>
 </body>
 </html>
-
