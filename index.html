@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>서울 기온 및 체감온도 예보</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js 추가 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -65,8 +65,8 @@
                 const data = await response.json();
                 
                 const items = data.response.body.items.item;
-                const temps = items.filter(item => item.category === "TMP"); // 🔹 기온 데이터
-                const humidities = items.filter(item => item.category === "REH"); // 🔹 상대습도 데이터
+                const temps = items.filter(item => item.category === "TMP");
+                const humidities = items.filter(item => item.category === "REH");
                 
                 // 🔹 08시부터 20시까지 필터링
                 const filteredTemps = temps.filter(item => parseInt(item.fcstTime) >= 800 && parseInt(item.fcstTime) <= 2000);
@@ -78,7 +78,7 @@
 
                 // ✅ 체감온도 계산
                 const feelsLikeValues = values.map((Ta, i) => {
-                    const RH = humidValues[i]; // 상대습도
+                    const RH = humidValues[i];
                     const Tw = calculateWetBulbTemperature(Ta, RH);
                     return calculateFeelsLikeTemperature(Ta, Tw);
                 });
@@ -92,7 +92,6 @@
             }
         }
 
-        // ✅ 습구온도 계산
         function calculateWetBulbTemperature(Ta, RH) {
             return Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5)) 
                  + Math.atan(Ta + RH) 
@@ -101,7 +100,6 @@
                  - 4.686035;
         }
 
-        // ✅ 체감온도 계산
         function calculateFeelsLikeTemperature(Ta, Tw) {
             return -0.2442 + 0.55399 * Tw + 0.45535 * Ta 
                    - 0.0022 * Tw * Tw + 0.00278 * Tw * Ta + 3.0;
@@ -111,7 +109,6 @@
             const tempCtx = document.getElementById("tempChart").getContext("2d");
             const feelsLikeCtx = document.getElementById("feelsLikeChart").getContext("2d");
 
-            // ✅ 기존 차트 삭제
             if (window.tempChart instanceof Chart) {
                 window.tempChart.destroy();
             }
@@ -119,14 +116,39 @@
                 window.feelsLikeChart.destroy();
             }
 
-            // ✅ 기온 도넛 차트
+            const commonOptions = {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }, // ✅ 범례 제거
+                    tooltip: { enabled: false },
+                },
+                cutout: "60%", // ✅ 도넛 크기 동일 유지
+                animation: {
+                    onComplete: function () {
+                        const chartInstance = this.chart;
+                        const ctx = chartInstance.ctx;
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.font = "14px Arial";
+
+                        chartInstance.data.labels.forEach((label, i) => {
+                            const meta = chartInstance.getDatasetMeta(0);
+                            const arc = meta.data[i];
+                            const center = arc.getCenterPoint();
+
+                            ctx.fillStyle = "black";
+                            ctx.fillText(label, center.x, center.y);
+                        });
+                    }
+                }
+            };
+
             window.tempChart = new Chart(tempCtx, {
                 type: "doughnut",
                 data: {
-                    labels: times.map((time, i) => `${time.slice(0,2)}시 (${values[i]}℃)`),
+                    labels: times.map((time, i) => `${time.slice(0,2)}시\n${values[i]}℃`),
                     datasets: [{
-                        label: "기온 (℃)",
-                        data: values,
+                        data: new Array(values.length).fill(1), // ✅ 크기 동일 유지
                         backgroundColor: [
                             "rgba(255, 99, 132, 0.6)",
                             "rgba(54, 162, 235, 0.6)",
@@ -138,23 +160,15 @@
                         borderWidth: 1
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: "bottom" },
-                        title: { display: true, text: "서울 기온 예보 (도넛 차트)" }
-                    }
-                }
+                options: commonOptions
             });
 
-            // ✅ 체감온도 도넛 차트
             window.feelsLikeChart = new Chart(feelsLikeCtx, {
                 type: "doughnut",
                 data: {
-                    labels: times.map((time, i) => `${time.slice(0,2)}시 (${feelsLikeValues[i].toFixed(1)}℃)`),
+                    labels: times.map((time, i) => `${time.slice(0,2)}시\n${feelsLikeValues[i].toFixed(1)}℃`),
                     datasets: [{
-                        label: "체감온도 (℃)",
-                        data: feelsLikeValues,
+                        data: new Array(feelsLikeValues.length).fill(1), // ✅ 크기 동일 유지
                         backgroundColor: [
                             "rgba(255, 99, 132, 0.6)",
                             "rgba(54, 162, 235, 0.6)",
@@ -166,15 +180,10 @@
                         borderWidth: 1
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: "bottom" },
-                        title: { display: true, text: "서울 체감온도 예보 (도넛 차트)" }
-                    }
-                }
+                options: commonOptions
             });
         }
     </script>
 </body>
 </html>
+
