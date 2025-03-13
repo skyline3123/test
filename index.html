@@ -126,35 +126,33 @@
 
             const getColor = (temp) => temp < 10 ? "skyblue" : "yellow";
 
+            const textPlugin = {
+                id: "textPlugin",
+                beforeDraw: (chart) => {
+                    const ctx = chart.ctx;
+                    ctx.save();
+                    const dataset = chart.data.datasets[0];
+                    chart.data.labels.forEach((label, i) => {
+                        const meta = chart.getDatasetMeta(0);
+                        const arc = meta.data[i];
+                        const center = arc.tooltipPosition();
+                        ctx.fillStyle = "black";
+                        ctx.font = "bold 14px Arial";
+                        ctx.textAlign = "center";
+                        ctx.fillText(label, center.x, center.y);
+                    });
+                    ctx.restore();
+                }
+            };
+
             const commonOptions = {
                 responsive: true,
                 plugins: {
                     legend: { display: false },
                     tooltip: { enabled: false },
+                    textPlugin
                 },
                 cutout: "60%",
-                animation: {
-                    onComplete: function () {
-                        setTimeout(() => {
-                            const chartInstance = this.chart;
-                            if (!chartInstance) return;
-                            const ctx = chartInstance.ctx;
-                            ctx.textAlign = "center";
-                            ctx.textBaseline = "middle";
-                            ctx.font = "14px Arial";
-
-                            chartInstance.data.labels.forEach((label, i) => {
-                                const meta = chartInstance.getDatasetMeta(0);
-                                const arc = meta.data[i];
-                                if (arc) {
-                                    const center = arc.tooltipPosition();
-                                    ctx.fillStyle = "black";
-                                    ctx.fillText(label, center.x, center.y);
-                                }
-                            });
-                        }, 300);
-                    }
-                }
             };
 
             const tempCtx = document.getElementById("tempChart").getContext("2d");
@@ -170,7 +168,8 @@
                         borderWidth: 1
                     }]
                 },
-                options: commonOptions
+                options: commonOptions,
+                plugins: [textPlugin]
             });
 
             window.feelsLikeChart = new Chart(feelsLikeCtx, {
@@ -183,10 +182,10 @@
                         borderWidth: 1
                     }]
                 },
-                options: commonOptions
+                options: commonOptions,
+                plugins: [textPlugin]
             });
         }
     </script>
 </body>
 </html>
-
