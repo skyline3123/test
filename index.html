@@ -32,7 +32,7 @@
             flex-wrap: wrap;
         }
         canvas {
-            max-width: 300px; /* 도넛 크기 동일 유지 */
+            max-width: 300px;
             margin: 20px;
         }
     </style>
@@ -54,7 +54,6 @@
         const today = new Date();
         const formattedDate = today.toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD 형식
 
-        // ✅ 날짜 표시
         document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
 
         async function fetchWeatherData() {
@@ -68,7 +67,6 @@
                 const temps = items.filter(item => item.category === "TMP");
                 const humidities = items.filter(item => item.category === "REH");
                 
-                // 🔹 08시부터 20시까지 필터링
                 const filteredTemps = temps.filter(item => parseInt(item.fcstTime) >= 800 && parseInt(item.fcstTime) <= 2000);
                 const filteredHumidities = humidities.filter(item => parseInt(item.fcstTime) >= 800 && parseInt(item.fcstTime) <= 2000);
 
@@ -76,7 +74,6 @@
                 const values = filteredTemps.map(item => item.fcstValue);
                 const humidValues = filteredHumidities.map(item => item.fcstValue);
 
-                // ✅ 체감온도 계산
                 const feelsLikeValues = values.map((Ta, i) => {
                     const RH = humidValues[i];
                     const Tw = calculateWetBulbTemperature(Ta, RH);
@@ -106,9 +103,6 @@
         }
 
         function updateCharts(times, values, feelsLikeValues) {
-            const tempCtx = document.getElementById("tempChart").getContext("2d");
-            const feelsLikeCtx = document.getElementById("feelsLikeChart").getContext("2d");
-
             if (window.tempChart instanceof Chart) {
                 window.tempChart.destroy();
             }
@@ -119,36 +113,39 @@
             const commonOptions = {
                 responsive: true,
                 plugins: {
-                    legend: { display: false }, // ✅ 범례 제거
+                    legend: { display: false },
                     tooltip: { enabled: false },
                 },
-                cutout: "60%", // ✅ 도넛 크기 동일 유지
+                cutout: "60%",
                 animation: {
-                    onComplete: function () {
-                        const chartInstance = this.chart;
-                        const ctx = chartInstance.ctx;
+                    onComplete: function (chart) {
+                        const ctx = chart.chart.ctx;
                         ctx.textAlign = "center";
                         ctx.textBaseline = "middle";
                         ctx.font = "14px Arial";
 
-                        chartInstance.data.labels.forEach((label, i) => {
-                            const meta = chartInstance.getDatasetMeta(0);
+                        chart.chart.data.labels.forEach((label, i) => {
+                            const meta = chart.chart.getDatasetMeta(0);
                             const arc = meta.data[i];
-                            const center = arc.getCenterPoint();
-
-                            ctx.fillStyle = "black";
-                            ctx.fillText(label, center.x, center.y);
+                            if (arc) {
+                                const center = arc.getCenterPoint();
+                                ctx.fillStyle = "black";
+                                ctx.fillText(label, center.x, center.y);
+                            }
                         });
                     }
                 }
             };
+
+            const tempCtx = document.getElementById("tempChart").getContext("2d");
+            const feelsLikeCtx = document.getElementById("feelsLikeChart").getContext("2d");
 
             window.tempChart = new Chart(tempCtx, {
                 type: "doughnut",
                 data: {
                     labels: times.map((time, i) => `${time.slice(0,2)}시\n${values[i]}℃`),
                     datasets: [{
-                        data: new Array(values.length).fill(1), // ✅ 크기 동일 유지
+                        data: new Array(values.length).fill(1),
                         backgroundColor: [
                             "rgba(255, 99, 132, 0.6)",
                             "rgba(54, 162, 235, 0.6)",
@@ -168,7 +165,7 @@
                 data: {
                     labels: times.map((time, i) => `${time.slice(0,2)}시\n${feelsLikeValues[i].toFixed(1)}℃`),
                     datasets: [{
-                        data: new Array(feelsLikeValues.length).fill(1), // ✅ 크기 동일 유지
+                        data: new Array(feelsLikeValues.length).fill(1),
                         backgroundColor: [
                             "rgba(255, 99, 132, 0.6)",
                             "rgba(54, 162, 235, 0.6)",
@@ -186,4 +183,3 @@
     </script>
 </body>
 </html>
-
