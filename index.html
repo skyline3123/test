@@ -27,8 +27,8 @@
   </style>
 </head>
 <body>
-  <h1>🌡 화성시 & 평택시 기온 및 체감온도 예보</h1>
-  <div id="dateDisplay">📅 날짜: 불러오는 중...</div>
+  <h1>🌡 화성시 & 평택시 기온 및 체감온도 예보 (내일)</h1>
+  <div id="dateDisplay">📅 기준일: 불러오는 중...</div>
   <button onclick="loadBoth()">예보 불러오기</button>
 
   <h2>🔵 화성시 예보</h2>
@@ -46,12 +46,18 @@
   <script>
     const API_KEY = "4WbcPl8cpZjq8VXOePfsXjYGid7SRm5olpV5s6WVU2qwe6cuzQCFIwqjhf45FV1x0fEtTkZnwFEoLZSG%2B69j6g%3D%3D"; // ← 실제 API Key 입력
     const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
+
     const today = new Date();
-    const formattedDate = today.toISOString().slice(0, 10).replace(/-/g, "");
-    document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    const baseDate = today.toISOString().slice(0, 10).replace(/-/g, "");
+    const targetFcstDate = tomorrow.toISOString().slice(0, 10).replace(/-/g, "");
+
+    document.getElementById("dateDisplay").innerText = `📅 기준일: ${baseDate}, 예보일: ${targetFcstDate}`;
 
     async function fetchForecast(nx, ny) {
-      const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=${nx}&ny=${ny}`;
+      const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=0500&nx=${nx}&ny=${ny}`;
       const response = await fetch(url);
       const data = await response.json();
       const items = data.response.body.items.item;
@@ -60,6 +66,7 @@
       let humids = new Map();
 
       items.forEach(item => {
+        if (item.fcstDate !== targetFcstDate) return;
         const time = parseInt(item.fcstTime);
         if (time >= 800 && time <= 2000) {
           if (item.category === "TMP") temps.set(time, parseFloat(item.fcstValue));
@@ -143,7 +150,7 @@
           }]
         },
         options: {
-          rotation: 4.18879, // 240도 = 시계 8시 방향
+          rotation: 4.18879, // 🔁 240도 = 시계 8시 방향에 08시 위치
           cutout: "60%",
           plugins: {
             legend: { display: false },
