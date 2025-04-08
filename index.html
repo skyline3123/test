@@ -1,191 +1,179 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>서울 기온 및 체감온도 예보</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 50px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        #weatherData {
-            margin-top: 20px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        #dateDisplay {
-            margin-top: 10px;
-            font-size: 16px;
-            color: gray;
-        }
-        .chart-container {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        canvas {
-            max-width: 300px;
-            margin: 20px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>화성시 & 평택시 기온 예보</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+    }
+    .chart-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 40px;
+      margin-bottom: 60px;
+    }
+    canvas {
+      max-width: 300px;
+    }
+    h2 {
+      margin-top: 40px;
+    }
+  </style>
 </head>
 <body>
-    <h1>📡 서울 기온 및 체감온도 예보</h1>
-    <div id="dateDisplay">📅 날짜: 불러오는 중...</div>
-    <button onclick="fetchWeatherData()">기온 예보 불러오기</button>
-    <div id="weatherData">🔄 기온 정보를 불러옵니다...</div>
-    
-    <div class="chart-container">
-        <canvas id="tempChart"></canvas> <!-- 기온 도넛 차트 -->
-        <canvas id="feelsLikeChart"></canvas> <!-- 체감온도 도넛 차트 -->
-    </div>
+  <h1>🌡 화성시 & 평택시 기온 및 체감온도 예보</h1>
+  <div id="dateDisplay">📅 날짜: 불러오는 중...</div>
+  <button onclick="loadBoth()">예보 불러오기</button>
 
-    <script>
-        const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
-        const API_KEY = "4WbcPl8cpZjq8VXOePfsXjYGid7SRm5olpV5s6WVU2qwe6cuzQCFIwqjhf45FV1x0fEtTkZnwFEoLZSG%2B69j6g%3D%3D"; // 🔹 본인의 API 키로 변경
-        const today = new Date();
-        const formattedDate = today.toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD 형식
+  <h2>🔵 화성시 예보</h2>
+  <div class="chart-row">
+    <canvas id="tempHwaseong"></canvas>
+    <canvas id="feelsHwaseong"></canvas>
+  </div>
 
-        document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
+  <h2>🔴 평택시 예보</h2>
+  <div class="chart-row">
+    <canvas id="tempPyeongtaek"></canvas>
+    <canvas id="feelsPyeongtaek"></canvas>
+  </div>
 
-        async function fetchWeatherData() {
-            const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=60&ny=127`;
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                const items = data.response.body.items.item;
+  <script>
+    const API_KEY = "4WbcPl8cpZjq8VXOePfsXjYGid7SRm5olpV5s6WVU2qwe6cuzQCFIwqjhf45FV1x0fEtTkZnwFEoLZSG%2B69j6g%3D%3D"; // ← 반드시 교체하세요
+    const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
+    const today = new Date();
+    const formattedDate = today.toISOString().slice(0, 10).replace(/-/g, "");
 
-                let tempMap = new Map();
-                let humidityMap = new Map();
+    document.getElementById("dateDisplay").innerText = `📅 날짜: ${today.toISOString().slice(0, 10)}`;
 
-                items.forEach(item => {
-                    const time = parseInt(item.fcstTime);
-                    if (time >= 800 && time <= 2000) {
-                        if (item.category === "TMP") tempMap.set(time, item.fcstValue);
-                        if (item.category === "REH") humidityMap.set(time, item.fcstValue);
-                    }
-                });
+    async function fetchForecast(nx, ny) {
+      const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${formattedDate}&base_time=0500&nx=${nx}&ny=${ny}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      const items = data.response.body.items.item;
 
-                const times = [];
-                const values = [];
-                const humidValues = [];
+      let temps = new Map();
+      let humids = new Map();
 
-                for (let t = 800; t <= 2000; t += 100) {
-                    if (tempMap.has(t) && humidityMap.has(t)) {
-                        times.push(t.toString().padStart(4, "0"));
-                        values.push(tempMap.get(t));
-                        humidValues.push(humidityMap.get(t));
-                    }
-                }
-
-                const feelsLikeValues = values.map((Ta, i) => {
-                    const RH = humidValues[i];
-                    const Tw = calculateWetBulbTemperature(Ta, RH);
-                    return calculateFeelsLikeTemperature(Ta, Tw);
-                });
-
-                document.getElementById("weatherData").innerText = `🌡 서울 기온 및 체감온도 예보 (08시~20시)`;
-
-                updateCharts(times, values, feelsLikeValues);
-            } catch (error) {
-                document.getElementById("weatherData").innerText = "❌ 데이터를 불러오는 중 오류 발생!";
-                console.error("API Fetch Error:", error);
-            }
+      items.forEach(item => {
+        const time = parseInt(item.fcstTime);
+        if (time >= 800 && time <= 2000) {
+          if (item.category === "TMP") temps.set(time, parseFloat(item.fcstValue));
+          if (item.category === "REH") humids.set(time, parseFloat(item.fcstValue));
         }
+      });
 
-        function calculateWetBulbTemperature(Ta, RH) {
-            return Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5)) 
-                 + Math.atan(Ta + RH) 
-                 - Math.atan(RH - 1.67633) 
-                 + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH) 
-                 - 4.686035;
+      const times = [];
+      const tempValues = [];
+      const humidValues = [];
+
+      for (let t = 800; t <= 2000; t += 100) {
+        if (temps.has(t) && humids.has(t)) {
+          times.push(t.toString().padStart(4, "0"));
+          tempValues.push(temps.get(t));
+          humidValues.push(humids.get(t));
         }
+      }
 
-        function calculateFeelsLikeTemperature(Ta, Tw) {
-            return -0.2442 + 0.55399 * Tw + 0.45535 * Ta 
-                   - 0.0022 * Tw * Tw + 0.00278 * Tw * Ta + 3.0;
+      const feelsLikeValues = tempValues.map((Ta, i) => {
+        const RH = humidValues[i];
+        const Tw = calculateWetBulbTemperature(Ta, RH);
+        return calculateFeelsLikeTemperature(Ta, Tw);
+      });
+
+      return { times, tempValues, feelsLikeValues };
+    }
+
+    function calculateWetBulbTemperature(Ta, RH) {
+      return Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5))
+        + Math.atan(Ta + RH)
+        - Math.atan(RH - 1.67633)
+        + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH)
+        - 4.686035;
+    }
+
+    function calculateFeelsLikeTemperature(Ta, Tw) {
+      return -0.2442 + 0.55399 * Tw + 0.45535 * Ta
+        - 0.0022 * Tw * Tw + 0.00278 * Tw * Ta + 3.0;
+    }
+
+    function getColor(temp) {
+      if (temp < 10) return "skyblue";
+      if (temp < 20) return "lightgreen";
+      if (temp < 28) return "khaki";
+      if (temp < 33) return "orange";
+      return "red";
+    }
+
+    function polarChart(ctxId, labelPrefix, times, values) {
+      const ctx = document.getElementById(ctxId).getContext("2d");
+      if (Chart.getChart(ctxId)) Chart.getChart(ctxId).destroy();
+
+      const textPlugin = {
+        id: "textPlugin",
+        afterDraw(chart) {
+          const { ctx } = chart;
+          const meta = chart.getDatasetMeta(0);
+          ctx.save();
+          meta.data.forEach((arc, i) => {
+            const center = arc.tooltipPosition();
+            ctx.font = "bold 12px Arial";
+            ctx.fillStyle = "black";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(times[i].slice(0, 2) + "시", center.x, center.y - 14);
+            ctx.fillText(values[i].toFixed(1) + "℃", center.x, center.y + 4);
+          });
+          ctx.restore();
         }
+      };
 
-        function updateCharts(times, values, feelsLikeValues) {
-            if (window.tempChart instanceof Chart) {
-                window.tempChart.destroy();
-            }
-            if (window.feelsLikeChart instanceof Chart) {
-                window.feelsLikeChart.destroy();
-            }
+      return new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: times,
+          datasets: [{
+            data: new Array(times.length).fill(1),
+            backgroundColor: values.map(getColor),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          rotation: -Math.PI / 2, // 08시가 상단
+          cutout: "60%",
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false },
+            textPlugin
+          }
+        },
+        plugins: [textPlugin]
+      });
+    }
 
-            const getColor = (temp) => temp < 10 ? "skyblue" : "yellow";
+    async function loadBoth() {
+      const hwaseong = await fetchForecast(55, 119);
+      const pyeongtaek = await fetchForecast(61, 114);
 
-            const textPlugin = {
-                id: "textPlugin",
-                afterDraw: (chart) => {
-                    const ctx = chart.ctx;
-                    ctx.save();
-                    const dataset = chart.data.datasets[0];
-                    const meta = chart.getDatasetMeta(0);
-
-                    meta.data.forEach((arc, i) => {
-                        const center = arc.tooltipPosition();
-                        ctx.fillStyle = "black";
-                        ctx.font = "bold 14px Arial";
-                        ctx.textAlign = "center";
-                        ctx.fillText(chart.data.labels[i], center.x, center.y - 10); // 도넛 조각 위에 표시
-                    });
-                    ctx.restore();
-                }
-            };
-
-            const commonOptions = {
-                responsive: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: false },
-                    textPlugin
-                },
-                cutout: "60%",
-            };
-
-            const tempCtx = document.getElementById("tempChart").getContext("2d");
-            const feelsLikeCtx = document.getElementById("feelsLikeChart").getContext("2d");
-
-            window.tempChart = new Chart(tempCtx, {
-                type: "doughnut",
-                data: {
-                    labels: times.map((time, i) => `${time.slice(0,2)}시\n${values[i]}℃`),
-                    datasets: [{
-                        data: new Array(values.length).fill(1),
-                        backgroundColor: values.map(getColor),
-                        borderWidth: 1
-                    }]
-                },
-                options: commonOptions,
-                plugins: [textPlugin]
-            });
-
-            window.feelsLikeChart = new Chart(feelsLikeCtx, {
-                type: "doughnut",
-                data: {
-                    labels: times.map((time, i) => `${time.slice(0,2)}시\n${feelsLikeValues[i].toFixed(1)}℃`),
-                    datasets: [{
-                        data: new Array(feelsLikeValues.length).fill(1),
-                        backgroundColor: feelsLikeValues.map(getColor),
-                        borderWidth: 1
-                    }]
-                },
-                options: commonOptions,
-                plugins: [textPlugin]
-            });
-        }
-    </script>
+      polarChart("tempHwaseong", "기온", hwaseong.times, hwaseong.tempValues);
+      polarChart("feelsHwaseong", "체감", hwaseong.times, hwaseong.feelsLikeValues);
+      polarChart("tempPyeongtaek", "기온", pyeongtaek.times, pyeongtaek.tempValues);
+      polarChart("feelsPyeongtaek", "체감", pyeongtaek.times, pyeongtaek.feelsLikeValues);
+    }
+  </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
