@@ -3,48 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>화성시 & 평택시 기온 예보</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>화성시 & 평택시 체감온도 스펙트럼</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
       padding: 30px;
     }
-    .chart-row {
+    .spectrum-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+    }
+    .spectrum-bar {
       display: flex;
       justify-content: center;
-      flex-wrap: wrap;
-      gap: 40px;
-      margin-bottom: 60px;
+      flex-wrap: nowrap;
     }
-    canvas {
-      max-width: 300px;
+    .spectrum-item {
+      width: 60px;
+      height: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: black;
+      font-size: 12px;
+      font-weight: bold;
     }
-    h2 {
-      margin-top: 40px;
+    .label {
+      font-size: 14px;
+      margin-bottom: 4px;
     }
   </style>
 </head>
 <body>
-  <h1>🌡 화성시 & 평택시 기온 및 체감온도 예보 (내일)</h1>
+  <h1>🌡 화성시 & 평택시 체감온도 스펙트럼 (내일)</h1>
   <div id="dateDisplay">📅 기준일: 불러오는 중...</div>
   <button onclick="loadBoth()">예보 불러오기</button>
 
-  <h2>🔵 화성시 예보</h2>
-  <div class="chart-row">
-    <canvas id="tempHwaseong"></canvas>
-    <canvas id="feelsHwaseong"></canvas>
-  </div>
-
-  <h2>🔴 평택시 예보</h2>
-  <div class="chart-row">
-    <canvas id="tempPyeongtaek"></canvas>
-    <canvas id="feelsPyeongtaek"></canvas>
+  <div class="spectrum-container">
+    <div>
+      <h2>🔵 화성시 예보</h2>
+      <div class="spectrum-bar" id="hwaseongSpectrum"></div>
+    </div>
+    <div>
+      <h2>🔴 평택시 예보</h2>
+      <div class="spectrum-bar" id="pyeongtaekSpectrum"></div>
+    </div>
   </div>
 
   <script>
-    const API_KEY = "4WbcPl8cpZjq8VXOePfsXjYGid7SRm5olpV5s6WVU2qwe6cuzQCFIwqjhf45FV1x0fEtTkZnwFEoLZSG%2B69j6g%3D%3D"; // ← 꼭 입력하세요!
+    const API_KEY = "4WbcPl8cpZjq8VXOePfsXjYGid7SRm5olpV5s6WVU2qwe6cuzQCFIwqjhf45FV1x0fEtTkZnwFEoLZSG%2B69j6g%3D%3D";
     const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
 
     const today = new Date();
@@ -55,14 +66,21 @@
     const targetFcstDate = tomorrow.toISOString().slice(0, 10).replace(/-/g, "");
     document.getElementById("dateDisplay").innerText = `📅 기준일: ${baseDate}, 예보일: ${targetFcstDate}`;
 
+    function getColor(temp) {
+      const min = 10, max = 35;
+      const ratio = (temp - min) / (max - min);
+      const hue = (1 - ratio) * 240;
+      return `hsl(${hue}, 100%, 50%)`;
+    }
+
     async function fetchForecast(nx, ny) {
       const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=0500&nx=${nx}&ny=${ny}`;
       const response = await fetch(url);
       const data = await response.json();
       const items = data.response.body.items.item;
 
-      let temps = new Map();
-      let humids = new Map();
+      const temps = new Map();
+      const humids = new Map();
 
       items.forEach(item => {
         if (item.fcstDate !== targetFcstDate) return;
@@ -73,10 +91,7 @@
         }
       });
 
-      const times = [];
-      const tempValues = [];
-      const humidValues = [];
-
+      const times = [], humidValues = [], tempValues = [];
       for (let t = 800; t <= 2000; t += 100) {
         if (temps.has(t) && humids.has(t)) {
           times.push(t.toString().padStart(4, "0"));
@@ -87,94 +102,34 @@
 
       const feelsLikeValues = tempValues.map((Ta, i) => {
         const RH = humidValues[i];
-        const Tw = calculateWetBulbTemperature(Ta, RH);
-        return calculateFeelsLikeTemperature(Ta, Tw);
+        const Tw = Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5)) +
+                   Math.atan(Ta + RH) - Math.atan(RH - 1.67633) +
+                   0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH) - 4.686035;
+        return Math.round(
+          -0.2442 + 0.55399 * Tw + 0.45535 * Ta - 0.0022 * Tw * Tw + 0.00278 * Tw * Ta + 3.0
+        );
       });
 
-      return { times, tempValues, feelsLikeValues };
+      return { times, feelsLikeValues };
     }
 
-    function calculateWetBulbTemperature(Ta, RH) {
-      return Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5))
-        + Math.atan(Ta + RH)
-        - Math.atan(RH - 1.67633)
-        + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH)
-        - 4.686035;
-    }
-
-    function calculateFeelsLikeTemperature(Ta, Tw) {
-      return -0.2442 + 0.55399 * Tw + 0.45535 * Ta
-        - 0.0022 * Tw * Tw + 0.00278 * Tw * Ta + 3.0;
-    }
-
-    function getColor(temp) {
-      if (temp < 10) return "skyblue";
-      if (temp < 20) return "lightgreen";
-      if (temp < 28) return "khaki";
-      if (temp < 33) return "orange";
-      return "red";
-    }
-
-    function polarChart(ctxId, times, values) {
-      const ctx = document.getElementById(ctxId).getContext("2d");
-      if (Chart.getChart(ctxId)) Chart.getChart(ctxId).destroy();
-
-      // ✅ rotation 보정: 08시 중심이 240도(시계 8시방향)에 위치하도록
-      const degrees = 240 - (360 / times.length) / 2;
-      const rotation = degrees * Math.PI / 180;
-
-      // 텍스트 직접 표시 플러그인
-      const textPlugin = {
-        id: "textPlugin",
-        afterDraw(chart) {
-          const { ctx } = chart;
-          const meta = chart.getDatasetMeta(0);
-          ctx.save();
-          meta.data.forEach((arc, i) => {
-            const center = arc.tooltipPosition();
-            ctx.font = "bold 12px Arial";
-            ctx.fillStyle = "black";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(times[i].slice(0, 2) + "시", center.x, center.y - 12);
-            ctx.fillText(Math.round(values[i]) + "℃", center.x, center.y + 6);
-          });
-          ctx.restore();
-        }
-      };
-
-      return new Chart(ctx, {
-        type: "doughnut",
-        data: {
-          labels: times,
-          datasets: [{
-            data: new Array(times.length).fill(1),
-            backgroundColor: values.map(getColor),
-            borderWidth: 1
-          }]
-        },
-        options: {
-          rotation: rotation,
-          cutout: "60%",
-          circumference: 2 * Math.PI,
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false },
-            textPlugin
-          }
-        },
-        plugins: [textPlugin]
+    function renderSpectrum(containerId, times, values) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = "";
+      times.forEach((time, i) => {
+        const box = document.createElement("div");
+        box.className = "spectrum-item";
+        box.style.backgroundColor = getColor(values[i]);
+        box.innerHTML = `<div class="label">${time.slice(0,2)}시</div>${values[i]}℃`;
+        container.appendChild(box);
       });
     }
 
     async function loadBoth() {
       const hwaseong = await fetchForecast(55, 119);
       const pyeongtaek = await fetchForecast(61, 114);
-
-      polarChart("tempHwaseong", hwaseong.times, hwaseong.tempValues);
-      polarChart("feelsHwaseong", hwaseong.times, hwaseong.feelsLikeValues);
-      polarChart("tempPyeongtaek", pyeongtaek.times, pyeongtaek.tempValues);
-      polarChart("feelsPyeongtaek", pyeongtaek.times, pyeongtaek.feelsLikeValues);
+      renderSpectrum("hwaseongSpectrum", hwaseong.times, hwaseong.feelsLikeValues);
+      renderSpectrum("pyeongtaekSpectrum", pyeongtaek.times, pyeongtaek.feelsLikeValues);
     }
   </script>
 </body>
