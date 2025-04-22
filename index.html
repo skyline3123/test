@@ -74,7 +74,7 @@
     }
 
     async function fetchForecast(nx, ny) {
-      const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=0500&nx=${nx}&ny=${ny}`;
+      const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=1400&nx=${nx}&ny=${ny}`;
       const response = await fetch(url);
       const data = await response.json();
       const items = data.response.body.items.item;
