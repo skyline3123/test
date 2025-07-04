@@ -5,10 +5,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>화성시 & 평택시 체감온도 예보</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-<style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
     body {
-      font-family: 'Arial', sans-serif;
+      font-family:  'Arial', sans-serif;
       text-align: center;
       padding: 30px;
       background-color: #F0F8FF;
@@ -21,33 +21,12 @@
       margin-bottom: 20px;
     }
     canvas {
-      max-width: 300px;
-      width: 100%;
-      height: auto;
+      width: 150px;
+      height: 150px;
     }
-    .description-text {
-      margin-top: 10px;
-      font-size: 18px;
-      color: black;
-      text-align: left;
-      max-width: 450px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-      h1 {
-        font-size: 24px;
-      }
-      .description-text {
-        font-size: 14px;
-        text-align: center;
-        margin: 0 auto;
-      }
-    }
+    
   </style>
+
 <script>
 
 window.onload = function() {
@@ -161,10 +140,7 @@ function selectD(loD){
 <div class="chart-row">
     <div class="chart-row">
 	</div>
-	<div style="text-align: center;">
-  <canvas id="feelsHwaseong" style="display: block; margin: 0 auto; max-width: 90vw; height: auto;"></canvas>
-</div>
-
+	<div style="text-align: center; margin-left: 10px;">
 	    <canvas id="feelsHwaseong" width="150" height="150"></canvas>
   <div style="margin-top: 10px; font-size: 18px; color: black; text-align: left; max-width: 450px; margin-left: 0px; ">
     ※  <strong>일 최고체감온도</strong>는 시간대별 체감온도보다 더 높겠으니, <br>
@@ -173,6 +149,7 @@ function selectD(loD){
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>[경고]</strong> 야외작업은 피하시기 바랍니다.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>[위험]</strong> 야외작업은 매우 위험합니다.
 	    </div>
+	</div>
 
     </div>
 </div>        
@@ -242,6 +219,178 @@ function selectD(loD){
 
     function calculateWetBulbTemperature(Ta, RH) {
       return Ta * Math.atan(0.151977 * Math.pow(RH + 8.313659, 0.5))
+        + Math.atan(Ta + RH)
+        - Math.atan(RH - 1.67633)
+        + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH)
+        - 4.686035;
+    }
+
+    function calculateFeelsLikeTemperature(Ta, Tw) {
+      return -0.2442 + 0.55399 * Tw + 0.45535 * Ta
+        - 0.0022 * Tw * Tw + 0.00278 * Tw * Ta + 3.0;
+    }
+
+    function getColor(temp) {
+
+      if (temp >= 35) return "#E0002B";
+      if (temp >= 33) return "#EF5D20";
+      if (temp >= 31) return "#FFCD12";
+      if (temp >= 29) return "#86E57F";
+      return "#D5D5D5";
+    }
+
+    const labelText = 'text';
+
+
+function polarChart(ctxId, times, values, labelText) {
+  const canvas = document.getElementById(ctxId);
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+
+  if (Chart.getChart(ctxId)) Chart.getChart(ctxId).destroy();
+
+  const extendedTimes = [...times, ''];
+  const baseValue = 1;
+  const extendedValues = new Array(times.length).fill(baseValue);
+  extendedValues.push(0.15);
+  const backgroundColors = values.map(getColor);
+  backgroundColors.push('rgba(0,0,0,0)');
+
+  // 중앙 텍스트 및 날짜 이미지
+  const centerImageWithTextPlugin = {
+    id: "centerImageWithTextPlugin",
+    beforeDraw(chart) {
+      const { width, height, ctx } = chart;
+
+      const image = new Image();
+      image.src = "./calendar.png";
+
+      image.onload = () => {
+        const size = 60;
+        const x = width / 2 - size / 2;
+        const y = height / 2 - size / 2 - 15;
+
+        ctx.save();
+        ctx.drawImage(image, x, y, size, size);
+        ctx.restore();
+
+        ctx.save();
+        ctx.font = "bold 18px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(labelText[0], width / 2, height / 2 -5);
+        ctx.restore();
+
+        ctx.save();
+        ctx.font = "bold 18px Arial";
+        ctx.fillStyle = "#E0002B";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(labelText[1], width / 2, height / 2 + 25);
+        ctx.restore();
+      };
+    }
+  };
+
+  // 텍스트 및 강조 사각형
+  const textPlugin = {
+    id: "textPlugin",
+    afterDraw(chart) {
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      const realValues = chart.data.datasets[0].realValues;
+      ctx.save();
+
+      const highlightHours = ["09", "12", "15", "18"];
+
+      meta.data.forEach((arc, i) => {
+        const label = chart.data.labels[i];
+        if (!label || label === '') return;
+
+        const radius = arc.outerRadius + 20;
+        const angle = (arc.startAngle + arc.endAngle) / 2;
+
+        const x = chart.width / 2 + radius * Math.cos(angle);
+        const y = chart.height / 2 + radius * Math.sin(angle);
+
+        const hourOnly = label.slice(0, 2);
+
+        ctx.font = "bold 16px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(hourOnly + "시", x, y);
+
+        const innerCenter = arc.tooltipPosition();
+        ctx.fillText(Math.round(realValues[i]) + "℃", innerCenter.x, innerCenter.y + 4);
+
+ if (highlightHours.includes(hourOnly)) {
+  const boxWidth = 35;
+  const boxHeight = 25;
+
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(
+    x - boxWidth / 2,
+    y - boxHeight / 2,
+    boxWidth,
+    boxHeight
+  );
+}
+      });
+      ctx.restore();
+    }
+  };
+
+  return new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: extendedTimes,
+      datasets: [{
+        data: extendedValues,
+        backgroundColor: backgroundColors,
+        borderWidth: 1,
+        realValues: values
+      }]
+    },
+    options: {
+      rotation: 235,
+  radius: '90%', 
+      cutout: "60%",
+      layout: {
+        padding: { top: 10, bottom: 10, left: 40, right: 40 }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      }
+    },
+    plugins: [textPlugin, centerImageWithTextPlugin]
+  });
+}
+
+    async function loadBoth(lo, ca) {
+    //alert(lo + "_" + ca);
+      const hwaseong = await fetchForecast(lo, ca);
+  
+polarChart(
+  "tempHwaseong",
+  hwaseong.times,
+  hwaseong.tempValues,
+  [parseInt(tomorrowDate.substr(4, 2), 10) + '/' + tomorrowDate.substr(6, 2), '기온' ]
+);
+polarChart(
+  "feelsHwaseong",
+  hwaseong.times,
+  hwaseong.feelsLikeValues,
+  [parseInt(tomorrowDate.substr(4, 2), 10) + '/' + tomorrowDate.substr(6, 2),'체감온도' ]
+);
+
+    }
+  </script>
+</body>
+</html>
         + Math.atan(Ta + RH)
         - Math.atan(RH - 1.67633)
         + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH)
