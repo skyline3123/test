@@ -6,45 +6,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>화성시 & 평택시 체감온도 예보</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
- <style>
-/* 기존 스타일 위에 덮어쓰기 또는 별도 아래 추가 */
-@media (max-width: 768px) {
-  body {
-    padding: 10px !important;
-  }
-
-  canvas {
-    width: 120px !important;
-    height: 120px !important;
-  }
-
-  .chart-row {
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 10px !important;
-  }
-
-  select {
-    width: 100% !important;
-    margin-top: 5px;
-  }
-
-  h1 {
-    font-size: 24px !important;
-  }
-
-  .description-text {
-    font-size: 14px !important;
-    text-align: center !important;
-    margin-left: 0 !important;
-  }
-
-  img {
-    max-width: 100% !important;
-    height: auto !important;
-  }
-}
-</style>
+<style>
+    body {
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      padding: 30px;
+      background-color: #F0F8FF;
+    }
+    .chart-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    canvas {
+      max-width: 300px;
+      width: 100%;
+      height: auto;
+    }
+    .description-text {
+      margin-top: 10px;
+      font-size: 18px;
+      color: black;
+      text-align: left;
+      max-width: 450px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      .description-text {
+        font-size: 14px;
+        text-align: center;
+        margin: 0 auto;
+      }
+    }
+  </style>
 <script>
 
 window.onload = function() {
