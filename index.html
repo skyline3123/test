@@ -389,5 +389,49 @@ polarChart(
 
     }
   </script>
+
+<style>
+/* 기존 스타일 위에 덮어쓰기 또는 별도 아래 추가 */
+@media (max-width: 768px) {
+  body {
+    padding: 10px !important;
+  }
+
+  canvas {
+    width: 120px !important;
+    height: 120px !important;
+  }
+
+  .chart-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  select {
+    width: 100% !important;
+    margin-top: 5px;
+  }
+
+  h1 {
+    font-size: 24px !important;
+  }
+
+  .description-text {
+    font-size: 14px !important;
+    text-align: center !important;
+    margin-left: 0 !important;
+  }
+
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
+</style>
+
+
+
+	
 </body>
 </html>
