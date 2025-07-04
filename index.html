@@ -8,115 +8,155 @@
   <style>
     body {
       font-family: 'Arial', sans-serif;
-      margin: 0;
+      text-align: center;
       padding: 20px;
       background-color: #F0F8FF;
-      text-align: center;
     }
-
     h1 {
-      font-size: 24px;
-      margin-bottom: 10px;
+      font-size: 28px;
+      font-family: 'Jua', sans-serif;
     }
-
-    .selectors {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      margin: 15px 0;
+    .controls {
+      margin: 10px 0;
     }
-
-    select {
-      border-radius: 4px;
-      border: 2px solid #ccc;
-      width: 130px;
-      height: 35px;
-    }
-
-    .chart-row {
+    .chart-container {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 30px;
-      margin: 20px 0;
+      margin-top: 20px;
     }
-
     canvas {
-      width: 100% !important;
-      max-width: 300px;
-      height: auto !important;
-    }
-
-    .notice {
-      font-size: 16px;
-      text-align: left;
-      max-width: 480px;
-      margin: auto;
-      color: #000;
-    }
-
-    img.legend, img.logo {
       max-width: 100%;
       height: auto;
-      margin: 20px 0;
+    }
+    img.legend, img.ci {
+      max-width: 100%;
+      height: auto;
+      margin-top: 20px;
+    }
+    @media (min-width: 600px) {
+      .chart-row {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+      }
     }
   </style>
 </head>
 <body>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <h1 style="font-family: 'Jua', sans-serif;">🌡 내일 시간대별 체감온도 예보</h1>
+  <h1>🌡 내일 시간대별 체감온도 예보</h1>
+
   <div id="dateDisplay">불러오는 중...</div>
 
-  <div class="selectors">
-    <select name="locationS" id="locationS" onchange="selectS(this.value);">
-      <option value="hwaseong">화성시</option>
-      <option value="pyeongtaek">평택시</option>
-    </select>
-    <select name="locationD_H" id="locationD_H" onchange="selectD(this.value);">
-      <option value="57_119">남양읍</option>
-      <option value="59_119">봉담읍</option>
-      <option value="57_116">우정읍</option>
-      <option value="59_117">향남읍</option>
-      <option value="59_120">매송면</option>
-      <option value="58_119">비봉면</option>
-      <option value="56_119">마도면</option>
-      <option value="55_118">서신면</option>
-      <option value="59_118">팔탄면</option>
-      <option value="59_116">양감면</option>
-      <option value="60_118">정남면</option>
-      <option value="62_119">동탄1동</option>
-      <option value="61_119">병점1동</option>
-    </select>
-    <select name="locationD_P" id="locationD_P" onchange="selectD(this.value);" style="display: none;">
-      <option value="62_114">비전1동</option>
-      <option value="61_114">팽성읍</option>
-      <option value="59_114">안중읍</option>
-      <option value="58_114">포승읍</option>
-      <option value="59_115">청북읍</option>
-      <option value="62_117">진위면</option>
-      <option value="62_115">송탄동</option>
-      <option value="63_114">용이동</option>
+  <div class="controls">
+    <select onchange="loadChart(this.value)">
+      <option value="57_119">화성시 남양읍</option>
+      <option value="62_114">평택시 비전동</option>
     </select>
   </div>
-
-  <img src="범례.png" alt="범례" class="legend">
 
   <div class="chart-row">
+    <canvas id="tempHwaseong"></canvas>
     <canvas id="feelsHwaseong"></canvas>
-    <div class="notice">
-      ※ <strong>일 최고체감온도</strong>는 시간대별 체감온도보다 더 높겠으니,<br>
-      단계별 적극적인 대비가 필요합니다.<br>
-      <strong>[주의]</strong> 야외작업은 가급적 자제하시기 바랍니다.<br>
-      <strong>[경고]</strong> 야외작업은 피하시기 바랍니다.<br>
-      <strong>[위험]</strong> 야외작업은 매우 위험합니다.
-    </div>
   </div>
 
-  <div><img src="ci.png" alt="로고" class="logo" width="100"></div>
+  <img src="legend.png" class="legend" alt="범례">
+
+  <p style="max-width: 600px; text-align: left; margin: 20px auto; font-size: 16px;">
+    ※ <strong>일 최고체감온도</strong>는 시간대별 체감온도보다 더 높겠으니, 단계별 적극적인 대비가 필요합니다.<br>
+    <strong>[주의]</strong> 야외작업은 가급적 자제하시기 바랍니다.<br>
+    <strong>[경고]</strong> 야외작업은 피하시기 바랍니다.<br>
+    <strong>[위험]</strong> 야외작업은 매우 위험합니다.
+  </p>
+
+  <img src="ci.png" class="ci" alt="기상청 CI">
 
   <script>
-    // 기존 JS 코드 포함
+    const API_KEY = "(여기에 기상청 API Key 입력)";
+    const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
+
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    const baseDate = today.toISOString().slice(0,10).replace(/-/g, "");
+    const targetDate = tomorrow.toISOString().slice(0,10).replace(/-/g, "");
+
+    document.getElementById("dateDisplay").innerText = `${baseDate.slice(4,6)}월 ${baseDate.slice(6,8)}일 17시 발표`;
+
+    function getColor(temp) {
+      if (temp >= 35) return "#E0002B";
+      if (temp >= 33) return "#EF5D20";
+      if (temp >= 31) return "#FFCD12";
+      if (temp >= 29) return "#86E57F";
+      return "#D5D5D5";
+    }
+
+    async function fetchData(nx, ny) {
+      const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=1700&nx=${nx}&ny=${ny}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const items = data.response.body.items.item;
+
+      let temps = {}, humids = {};
+      items.forEach(item => {
+        if (item.fcstDate === targetDate) {
+          const time = parseInt(item.fcstTime);
+          if (item.category === "TMP") temps[time] = parseFloat(item.fcstValue);
+          if (item.category === "REH") humids[time] = parseFloat(item.fcstValue);
+        }
+      });
+
+      let hours = [], tArr = [], fArr = [];
+      for (let h = 800; h <= 2000; h += 100) {
+        if (temps[h] && humids[h]) {
+          hours.push(h.toString().padStart(4, '0'));
+          tArr.push(temps[h]);
+          const Tw = temps[h] * Math.atan(0.151977 * Math.pow(humids[h] + 8.313659, 0.5)) + Math.atan(temps[h] + humids[h]) - Math.atan(humids[h] - 1.67633) + 0.00391838 * Math.pow(humids[h], 1.5) * Math.atan(0.023101 * humids[h]) - 4.686035;
+          const feels = -0.2442 + 0.55399 * Tw + 0.45535 * temps[h] - 0.0022 * Tw * Tw + 0.00278 * Tw * temps[h] + 3.0;
+          fArr.push(Math.round(feels));
+        }
+      }
+
+      return { hours, tArr, fArr };
+    }
+
+    function drawChart(id, labels, data, title) {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+      if (Chart.getChart(ctx)) Chart.getChart(ctx).destroy();
+
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            label: title,
+            data: new Array(labels.length).fill(1),
+            backgroundColor: data.map(getColor),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          cutout: '60%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false },
+            title: { display: true, text: title }
+          }
+        }
+      });
+    }
+
+    async function loadChart(value) {
+      const [nx, ny] = value.split("_");
+      const { hours, tArr, fArr } = await fetchData(nx, ny);
+      drawChart("tempHwaseong", hours, tArr, "기온");
+      drawChart("feelsHwaseong", hours, fArr, "체감온도");
+    }
+
+    window.onload = () => loadChart("57_119");
   </script>
 </body>
 </html>
