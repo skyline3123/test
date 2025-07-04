@@ -2,224 +2,102 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>화성·평택 시간대별 체감온도 예보</title>
-
-  <!-- Chart.js v4 고정 로드 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>체감온도 예보</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- Google Webfont (Jua) -->
-  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet" />
-
   <style>
-    /* 기본 레이아웃 */
     body {
-      font-family: 'Jua', sans-serif;
+      font-family: 'Arial', sans-serif;
       margin: 0;
       padding: 20px;
+      background-color: #F0F8FF;
       text-align: center;
-      background: #F0F8FF;
     }
 
     h1 {
-      font-size: min(7vw, 40px);
-      margin: 0 0 20px;
+      font-size: 24px;
+      margin-bottom: 10px;
     }
 
-    /* 드롭다운 컨테이너 */
-    .controls {
+    .chart-container {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-
-    select {
-      width: 100%;
-      max-width: 180px;
-      height: 40px;
-      font-size: 16px;
-    }
-
-    /* 차트 컨테이너 (반응형) */
-    .chart-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+      margin: 20px 0;
     }
 
     canvas {
-      width: 46vw;   /* 모바일에서 2개 나란히 → 46% */
-      max-width: 200px;
+      width: 100%;
+      max-width: 300px;
       height: auto;
     }
 
-    /* 노트 */
-    .note {
-      font-size: 15px;
-      max-width: 600px;
-      margin: 20px auto 0;
-      text-align: left;
-      line-height: 1.4em;
+    img.legend, img.logo {
+      max-width: 100%;
+      height: auto;
+    }
+
+    @media (min-width: 768px) {
+      .chart-container {
+        flex-direction: row;
+        justify-content: center;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>🌡 내일 시간대별 체감온도 예보</h1>
-  <div id="dateDisplay">불러오는 중...</div>
 
-  <!-- =================  드롭다운  ================= -->
-  <div class="controls">
-    <select id="locationS" onchange="selectS(this.value)">
-      <option value="hwaseong">화성시</option>
-      <option value="pyeongtaek">평택시</option>
-    </select>
+  <h1>🌡 내일 체감온도 도넛 그래프</h1>
 
-    <!-- 화성 읍면동 -->
-    <select id="locationD_H" onchange="selectD(this.value)">
-      <option value="57_119">남양읍</option>
-      <option value="62_119">동탄2동</option>
-    </select>
-
-    <!-- 평택 읍면동 (초기 숨김) -->
-    <select id="locationD_P" style="display:none;" onchange="selectD(this.value)">
-      <option value="62_114">비전1동</option>
-      <option value="61_114">팽성읍</option>
-    </select>
+  <div>
+    <img src="https://skyline3123.github.io/test/범례.png" alt="범례" class="legend" />
   </div>
 
-  <!-- 범례 이미지 (원한다면 영문 파일명 legend.png 로 변경) -->
-  <img src="legend.png" alt="범례" style="width:280px; max-width:80%; margin:10px auto;" />
-
-  <!-- =================  차트 영역  ================= -->
-  <div class="chart-row">
-    <canvas id="tempChart"></canvas>
+  <div class="chart-container">
     <canvas id="feelsChart"></canvas>
   </div>
 
-  <div class="note">
-    ※ <strong>일 최고체감온도</strong>는 시간대별 체감온도보다 더 높으므로 단계별 대응이 필요합니다.<br>
-    [주의] 야외작업은 가급적 자제하세요.<br>
-    [경고] 가능하다면 야외작업을 피하세요.<br>
-    [위험] 야외작업은 매우 위험합니다.
+  <div>
+    <img src="https://skyline3123.github.io/test/ci.png" alt="기상청 로고" class="logo" width="100" />
   </div>
 
   <script>
-    /* =================  기본 날짜 세팅  ================= */
-    const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
-    const baseDate = today.toISOString().slice(0, 10).replace(/-/g, "");
-    const fcstDate = tomorrow.toISOString().slice(0, 10).replace(/-/g, "");
-    document.getElementById('dateDisplay').innerText = `${baseDate.substr(4,2)}월 ${baseDate.substr(6,2)}일 17시 발표`;
+    const times = ["0800", "0900", "1000", "1100", "1200", "1300", "1400", "1500", "1600", "1700", "1800", "1900", "2000"];
+    const values = [27.3, 28.2, 29.1, 30.2, 31.5, 33.2, 34.0, 34.5, 33.9, 32.8, 31.1, 29.7, 28.0];
 
-    /* =================  위치 선택 로직  ================= */
-    function selectS(city) {
-      if (city === 'hwaseong') {
-        document.getElementById('locationD_H').style.display = 'inline-block';
-        document.getElementById('locationD_P').style.display = 'none';
-        loadCharts(57, 119);
-      } else {
-        document.getElementById('locationD_H').style.display = 'none';
-        document.getElementById('locationD_P').style.display = 'inline-block';
-        loadCharts(62, 114);
-      }
-    }
+    const backgroundColors = values.map(temp => {
+      if (temp >= 35) return "#E0002B";
+      if (temp >= 33) return "#EF5D20";
+      if (temp >= 31) return "#FFCD12";
+      if (temp >= 29) return "#86E57F";
+      return "#D5D5D5";
+    });
 
-    function selectD(value) {
-      const [nx, ny] = value.split('_');
-      loadCharts(nx, ny);
-    }
-
-    /* =================  공공데이터포털 API  ================= */
-    const API_KEY = "여기에_서비스키_입력"; // URL 인코딩 X 상태
-    const API_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
-
-    async function fetchForecast(nx, ny) {
-      const url = `${API_URL}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=1700&nx=${nx}&ny=${ny}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const items = data.response.body.items.item;
-
-      const temp = new Map();
-      const humid = new Map();
-      items.forEach(item => {
-        if (item.fcstDate !== fcstDate) return;
-        const hh = parseInt(item.fcstTime);
-        if (hh < 800 || hh > 2000) return;
-        if (item.category === 'TMP') temp.set(hh, +item.fcstValue);
-        if (item.category === 'REH') humid.set(hh, +item.fcstValue);
-      });
-
-      const times = [], tArr = [], hArr = [];
-      for (let hh=800; hh<=2000; hh+=100) {
-        if (temp.has(hh) && humid.has(hh)) {
-          times.push(hh.toString().padStart(4,'0'));
-          tArr.push(temp.get(hh));
-          hArr.push(humid.get(hh));
+    new Chart(document.getElementById("feelsChart"), {
+      type: "doughnut",
+      data: {
+        labels: times,
+        datasets: [{
+          data: values.map(() => 1),
+          backgroundColor: backgroundColors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        cutout: "60%",
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.label}시: ${values[context.dataIndex]}℃`;
+              }
+            }
+          }
         }
       }
-
-      const feels = tArr.map((Ta,i)=>{
-        const RH = hArr[i];
-        const Tw = calcWetBulb(Ta,RH);
-        return Math.round(calcFeels(Ta,Tw));
-      });
-      return {times, tArr, feels};
-    }
-
-    /* =================  체감온도 계산식  ================= */
-    function calcWetBulb(Ta,RH){
-      return Ta*Math.atan(0.151977*Math.sqrt(RH+8.313659))+
-             Math.atan(Ta+RH)-Math.atan(RH-1.67633)+
-             0.00391838*Math.pow(RH,1.5)*Math.atan(0.023101*RH)-4.686035;
-    }
-    function calcFeels(Ta,Tw){
-      return -0.2442+0.55399*Tw+0.45535*Ta-0.0022*Tw*Tw+0.00278*Tw*Ta+3.0;
-    }
-
-    /* =================  차트 그리기  ================= */
-    function colorScale(v){
-      if(v>=35) return '#E0002B';
-      if(v>=33) return '#EF5D20';
-      if(v>=31) return '#FFCD12';
-      if(v>=29) return '#86E57F';
-      return '#D5D5D5';
-    }
-
-    let tempChartInst=null, feelsChartInst=null;
-    function drawDoughnut(ctxId, labels, values, title){
-      const data = values.map(()=>1);
-      data.push(0.15); // padding slice
-      const labelsExt = [...labels,''];
-      const bg = values.map(colorScale);
-      bg.push('rgba(0,0,0,0)');
-
-      if(Chart.getChart(ctxId)) Chart.getChart(ctxId).destroy();
-      return new Chart(ctxId, {
-        type:'doughnut',
-        data:{
-          labels:labelsExt,
-          datasets:[{data,borderWidth:1,backgroundColor:bg,realValues:values}]
-        },
-        options:{
-          rotation:235,
-          cutout:'55%',
-          plugins:{legend:{display:false},tooltip:{enabled:false},title:{display:true,text:title,font:{size:16}}}
-        }
-      });
-    }
-
-    async function loadCharts(nx,ny){
-      const {times,tArr,feels} = await fetchForecast(nx,ny);
-      const labDate = `${fcstDate.substr(4,2)}/${fcstDate.substr(6,2)}`;
-      tempChartInst = drawDoughnut('tempChart', times, tArr, `${labDate} 기온`);
-      feelsChartInst = drawDoughnut('feelsChart', times, feels, `${labDate} 체감온도`);
-    }
-
-    /* =================  첫 로딩  ================= */
-    window.addEventListener('load',()=>loadCharts(57,119));
+    });
   </script>
 </body>
 </html>
